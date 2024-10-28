@@ -10,10 +10,16 @@ pub fn build(b: *std.Build) void {
     _ = b.addModule("root", .{ .root_source_file = b.path("src/zemscripten.zig") });
 }
 
-pub fn emccPath(b: *std.Build) []const u8 {
+pub fn emsdkPath(b: *std.Build) []const u8 {
     return std.fs.path.join(b.allocator, &.{
         b.dependency("emsdk", .{}).path("").getPath(b),
         "upstream/emscripten/",
+    }) catch unreachable;
+}
+
+pub fn emccPath(b: *std.Build) []const u8 {
+    return std.fs.path.join(b.allocator, &.{
+        emsdkPath(b),
         switch (builtin.target.os.tag) {
             .windows => "emcc.bat",
             else => "emcc",
@@ -23,8 +29,7 @@ pub fn emccPath(b: *std.Build) []const u8 {
 
 pub fn emrunPath(b: *std.Build) []const u8 {
     return std.fs.path.join(b.allocator, &.{
-        b.dependency("emsdk", .{}).path("").getPath(b),
-        "upstream/emscripten/",
+        emsdkPath(b),
         switch (builtin.target.os.tag) {
             .windows => "emrun.bat",
             else => "emrun",
