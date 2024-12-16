@@ -1,11 +1,6 @@
 const builtin = @import("builtin");
 const std = @import("std");
 
-pub const emsdk_ver_major = "3";
-pub const emsdk_ver_minor = "1";
-pub const emsdk_ver_tiny = "52";
-pub const emsdk_version = emsdk_ver_major ++ "." ++ emsdk_ver_minor ++ "." ++ emsdk_ver_tiny;
-
 pub fn build(b: *std.Build) void {
     _ = b.addModule("root", .{ .root_source_file = b.path("src/zemscripten.zig") });
 }
@@ -37,7 +32,7 @@ pub fn emrunPath(b: *std.Build) []const u8 {
     }) catch unreachable;
 }
 
-pub fn activateEmsdkStep(b: *std.Build) *std.Build.Step {
+pub fn activateEmsdkStep(b: *std.Build, emsdk_version: []const u8) *std.Build.Step {
     const emsdk_script_path = std.fs.path.join(b.allocator, &.{
         b.dependency("emsdk", .{}).path("").getPath(b),
         switch (builtin.target.os.tag) {
