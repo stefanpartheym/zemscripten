@@ -21,7 +21,7 @@ zig fetch --save=emsdk git+https://github.com/emscripten-core/emsdk#3.1.70
 Emsdk must be activated before it can be used. You can use `activateEmsdkStep` to create a build step for that:
 
 ```zig
-const activate_emsdk_step = @import("zemscripten", "3.1.70").activateEmsdkStep(b);
+const activate_emsdk_step = @import("zemscripten").activateEmsdkStep(b, "3.1.70");
 ```
 
 Add zemscripten's "root" module to your wasm compile target, then create an `emcc` build step. We use zemscripten's default flags and settings which can be overridden for your project specific requirements. Refer to the [emcc documentation](https://emscripten.org/docs/tools_reference/emcc.html). Example build.zig code:
