@@ -5,6 +5,13 @@ pub fn build(b: *std.Build) void {
     _ = b.addModule("root", .{ .root_source_file = b.path("src/zemscripten.zig") });
 }
 
+/// Returns the path to the minimal shell file.
+/// Argument `b` is expected to be the `Build` instance of this zemscripten
+/// dependency in the calling project.
+pub fn minimalShellFilePath(b: *std.Build) []const u8 {
+    return b.path("src/minimal-shell.html").getPath(b);
+}
+
 pub fn emsdkPath(b: *std.Build) []const u8 {
     return std.fs.path.join(b.allocator, &.{
         b.dependency("emsdk", .{}).path("").getPath(b),
@@ -77,8 +84,15 @@ pub const EmccFlags = std.StringHashMap(void);
 
 pub fn emccDefaultFlags(allocator: std.mem.Allocator, optimize: std.builtin.OptimizeMode) EmccFlags {
     var args = EmccFlags.init(allocator);
+    // Add optimization flag based on the optimization option.
+    const optimiztion_flag = switch (optimize) {
+        .Debug => "-Og",
+        .ReleaseFast => "-Ofast",
+        .ReleaseSmall => "-Os",
+        else => "-O3",
+    };
+    args.put(optimiztion_flag, {}) catch unreachable;
     if (optimize == .Debug) {
-        args.put("-Og", {}) catch unreachable;
         args.put("-gsource-map", {}) catch unreachable;
     }
     return args;
