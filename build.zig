@@ -8,48 +8,48 @@ pub fn build(b: *std.Build) void {
 /// Returns the path to the minimal shell file.
 /// Argument `b` is expected to be the `Build` instance of this zemscripten
 /// dependency in the calling project.
-pub fn minimalShellFilePath(b: *std.Build) []const u8 {
+pub fn minimalShellFilePath(zemscripten_dep: *std.Build.Dependency) []const u8 {
+    const b = zemscripten_dep.builder;
     return b.path("src/minimal-shell.html").getPath(b);
 }
 
-pub fn emsdkPath(b: *std.Build) []const u8 {
-    return std.fs.path.join(b.allocator, &.{
-        b.dependency("emsdk", .{}).path("").getPath(b),
-        "upstream/emscripten/",
+pub fn emsdkPath(emsdk_dep: *std.Build.Dependency, sub_path: []const u8) []const u8 {
+    return std.fs.path.join(emsdk_dep.builder.allocator, &.{
+        emsdk_dep.path("upstream/emscripten").getPath(emsdk_dep.builder),
+        sub_path,
     }) catch unreachable;
 }
 
-pub fn emccPath(b: *std.Build) []const u8 {
-    return std.fs.path.join(b.allocator, &.{
-        emsdkPath(b),
-        switch (builtin.target.os.tag) {
-            .windows => "emcc.bat",
-            else => "emcc",
-        },
-    }) catch unreachable;
-}
-
-pub fn emrunPath(b: *std.Build) []const u8 {
-    return std.fs.path.join(b.allocator, &.{
-        emsdkPath(b),
-        switch (builtin.target.os.tag) {
-            .windows => "emrun.bat",
-            else => "emrun",
-        },
-    }) catch unreachable;
-}
-
-pub fn activateEmsdkStep(b: *std.Build, emsdk_version: []const u8) *std.Build.Step {
-    const emsdk_script_path = std.fs.path.join(b.allocator, &.{
-        b.dependency("emsdk", .{}).path("").getPath(b),
+pub fn emsdkScriptPath(emsdk_dep: *std.Build.Dependency) []const u8 {
+    return emsdk_dep.path(
         switch (builtin.target.os.tag) {
             .windows => "emsdk.bat",
             else => "emsdk",
         },
-    }) catch unreachable;
+    ).getPath(emsdk_dep.builder);
+}
 
+pub fn emccPath(emsdk_dep: *std.Build.Dependency) []const u8 {
+    return emsdkPath(emsdk_dep, switch (builtin.target.os.tag) {
+        .windows => "emcc.bat",
+        else => "emcc",
+    });
+}
+
+pub fn emrunPath(emsdk_dep: *std.Build.Dependency) []const u8 {
+    return emsdkPath(emsdk_dep, switch (builtin.target.os.tag) {
+        .windows => "emrun.bat",
+        else => "emrun",
+    });
+}
+
+pub fn activateEmsdkStep(
+    b: *std.Build,
+    emsdk_dep: *std.Build.Dependency,
+    emsdk_version: []const u8,
+) *std.Build.Step {
+    const emsdk_script_path = emsdkScriptPath(emsdk_dep);
     var emsdk_install = b.addSystemCommand(&.{ emsdk_script_path, "install", emsdk_version });
-
     switch (builtin.target.os.tag) {
         .linux, .macos => {
             emsdk_install.step.dependOn(&b.addSystemCommand(&.{ "chmod", "+x", emsdk_script_path }).step);
@@ -60,10 +60,10 @@ pub fn activateEmsdkStep(b: *std.Build, emsdk_version: []const u8) *std.Build.St
     var emsdk_activate = b.addSystemCommand(&.{ emsdk_script_path, "activate", emsdk_version });
     emsdk_activate.step.dependOn(&emsdk_install.step);
 
-    const chmod_emcc = b.addSystemCommand(&.{ "chmod", "+x", emccPath(b) });
+    const chmod_emcc = b.addSystemCommand(&.{ "chmod", "+x", emccPath(emsdk_dep) });
     chmod_emcc.step.dependOn(&emsdk_activate.step);
 
-    const chmod_emrun = b.addSystemCommand(&.{ "chmod", "+x", emrunPath(b) });
+    const chmod_emrun = b.addSystemCommand(&.{ "chmod", "+x", emrunPath(emsdk_dep) });
     chmod_emrun.step.dependOn(&emsdk_activate.step);
 
     const step = b.allocator.create(std.Build.Step) catch unreachable;
@@ -137,6 +137,7 @@ pub const EmccFilePath = struct {
 
 pub fn emccStep(
     b: *std.Build,
+    emsdk_dep: *std.Build.Dependency,
     wasm: *std.Build.Step.Compile,
     options: struct {
         optimize: std.builtin.OptimizeMode,
@@ -149,7 +150,7 @@ pub fn emccStep(
         install_dir: std.Build.InstallDir,
     },
 ) *std.Build.Step {
-    var emcc = b.addSystemCommand(&.{emccPath(b)});
+    var emcc = b.addSystemCommand(&.{emccPath(emsdk_dep)});
 
     var iterFlags = options.flags.iterator();
     while (iterFlags.next()) |kvp| {
@@ -236,10 +237,11 @@ pub fn emccStep(
 
 pub fn emrunStep(
     b: *std.Build,
+    emsdk_dep: *std.Build.Dependency,
     html_path: []const u8,
     extra_args: []const []const u8,
 ) *std.Build.Step {
-    var emrun = b.addSystemCommand(&.{emrunPath(b)});
+    var emrun = b.addSystemCommand(&.{emrunPath(emsdk_dep)});
     emrun.addArgs(extra_args);
     emrun.addArg(html_path);
     // emrun.addArg("--");
