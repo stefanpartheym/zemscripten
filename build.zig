@@ -165,19 +165,17 @@ pub fn emccStep(
 
     emcc.addArtifactArg(wasm);
     {
-        for (wasm.root_module.import_table.values()) |module| {
-            for (module.link_objects.items) |link_object| {
-                switch (link_object) {
-                    .other_step => |compile_step| {
-                        switch (compile_step.kind) {
-                            .lib => {
-                                emcc.addArtifactArg(compile_step);
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
+        for (wasm.root_module.link_objects.items) |link_object| {
+            switch (link_object) {
+                .other_step => |compile_step| {
+                    switch (compile_step.kind) {
+                        .lib => {
+                            emcc.addArtifactArg(compile_step);
+                        },
+                        else => {},
+                    }
+                },
+                else => {},
             }
         }
     }
