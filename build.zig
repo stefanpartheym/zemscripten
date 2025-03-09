@@ -71,9 +71,6 @@ pub fn activateEmsdkStep(
         .id = .custom,
         .name = "Activate EMSDK",
         .owner = b,
-        .makeFn = &struct {
-            fn make(_: *std.Build.Step, _: std.Progress.Node) anyerror!void {}
-        }.make,
     });
     step.dependOn(&chmod_emcc.step);
     step.dependOn(&chmod_emrun.step);
@@ -168,9 +165,8 @@ pub fn emccStep(
 
     emcc.addArtifactArg(wasm);
     {
-        var it = wasm.root_module.iterateDependencies(wasm, false);
-        while (it.next()) |item| {
-            for (item.module.link_objects.items) |link_object| {
+        for (wasm.root_module.import_table.values()) |module| {
+            for (module.link_objects.items) |link_object| {
                 switch (link_object) {
                     .other_step => |compile_step| {
                         switch (compile_step.kind) {
